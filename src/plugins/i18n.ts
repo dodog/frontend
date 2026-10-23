@@ -1,4 +1,4 @@
-import { createI18n } from "vue-i18n";
+import { createI18n, type PluralizationRule } from "vue-i18n";
 
 export interface LocaleOption {
   value: string;
@@ -105,6 +105,33 @@ export function resolveLocale(
   return matchedLocale ?? "en"; // nothing shipped for this language → fall back to English
 }
 
+// Default plural
+const defaultRule: PluralizationRule = (choice, choicesLength) => {
+  choice = Math.abs(choice);
+  if (choicesLength === 2) return choice ? (choice > 1 ? 1 : 0) : 1;
+  return choice ? Math.min(choice, 2) : 0;
+};
+
+// Slovak plural - three forms "one | few | other"
+export const slovakRule: PluralizationRule = (choice, choicesLength) => {
+  if (choicesLength !== 3) return defaultRule(choice, choicesLength);
+  const n = Math.abs(choice);
+  if (n === 1) return 0;
+  if (n >= 2 && n <= 4) return 1;
+  return 2;
+};
+
+// Serbian plural, three forms "one | few | other":
+export const serbianRule: PluralizationRule = (choice, choicesLength) => {
+  if (choicesLength !== 3) return defaultRule(choice, choicesLength);
+  const n = Math.abs(choice);
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 0;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 1;
+  return 2;
+};
+
 const availableLocales = Object.keys(messages ?? {});
 
 const i18n = createI18n({
@@ -112,6 +139,12 @@ const i18n = createI18n({
   globalInjection: true,
   locale: resolveLocale(navigator.language, availableLocales),
   fallbackLocale: "en",
+  pluralRules: {
+    sk_SK: slovakRule,
+    sk: slovakRule,
+    sr_Latn: serbianRule,
+    sr: serbianRule,
+  },
   missingWarn: false,
   fallbackWarn: false,
   silentTranslationWarn: true,
